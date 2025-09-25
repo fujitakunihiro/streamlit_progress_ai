@@ -156,35 +156,7 @@ if st.session_state.get("show_update_form", False):
 # =========================
 # AI工数予測
 # =========================
-st.subheader("AI工数予測")
-completed = df[df["Status"]=="完了"]
-if len(completed) < 2:
-    st.info("予測には完了したタスクが2件以上必要です。")
-else:
-    X = completed[["EstimatedHours","NumFunctions","NumTestCases"]]
-    y = completed["ActualHours"]
-    model = LinearRegression()
-    model.fit(X, y)
-    
-    est_input = st.number_input("見積工数（時間）", min_value=0.0, step=0.5, key="ai_est")
-    num_func_input = st.number_input("関数数", min_value=0, step=1, key="ai_func")
-    num_test_input = st.number_input("テストケース数", min_value=0, step=1, key="ai_test")
-    
-    if st.button("AIで実績工数予測"):
-        pred = model.predict([[est_input, num_func_input, num_test_input]])
-        st.success(f"予測実績工数: {pred[0]:.2f}時間")
 
 # =========================
 # 進捗状況グラフ
 # =========================
-st.subheader("進捗状況グラフ（ステータス別）")
-if not df.empty:
-    progress_df = df.groupby("Status").size().reset_index(name='Count')
-    st.bar_chart(progress_df.set_index("Status"))
-
-st.subheader("実績 vs 見積 工数グラフ")
-if not df.empty:
-    fig2 = px.scatter(df, x="EstimatedHours", y="ActualHours",
-                      color="Assignee", size="NumFunctions",
-                      hover_data=["Task", "NumTestCases", "Status"])
-    st.plotly_chart(fig2, use_container_width=True)
