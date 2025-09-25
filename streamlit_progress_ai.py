@@ -41,6 +41,15 @@ if not df.empty:
     for col, h in zip(cols, header):
         col.markdown(f"**{h}**")
     for i, row in df.iterrows():
+        # --- 親タスクとサブタスク表示（カード枠→区切り線へ変更） ---
+        st.markdown(
+            """
+            <hr style="border: none; border-top: 3px solid #bcd; margin: 32px 0 18px 0;">
+            """,
+            unsafe_allow_html=True
+        )
+
+        # --- 親タスク（表形式） ---
         cols = st.columns(col_widths)
         cols[0].write(row["Task"])
         cols[1].write(row["Assignee"])
@@ -64,7 +73,6 @@ if not df.empty:
         </div>
         """
         cols[7].markdown(bar_html, unsafe_allow_html=True)
-        # アイコン風ボタン（絵文字利用）
         update_clicked = cols[8].button("✏️", key=f"update_{i}")
         del_clicked = cols[9].button("🗑️", key=f"del_{i}")
         if update_clicked:
@@ -118,13 +126,18 @@ if not df.empty:
                     st.session_state[f"show_subtask_form_{i}"] = False
                     st.rerun()
 
-        # --- サブタスク一覧を表形式で表示（更新・削除ボタン付き） ---
+        # --- サブタスク表（親タスクの下にインデント表示） ---
         sub_tasks_raw = row.get("SubTasks", "[]")
         if isinstance(sub_tasks_raw, float) and math.isnan(sub_tasks_raw):
             sub_tasks_raw = "[]"
         sub_tasks = json.loads(sub_tasks_raw)
         if sub_tasks:
-            st.markdown('<div style="margin-left:24px; margin-bottom:4px; font-size:13px; color:#555;">サブタスク</div>', unsafe_allow_html=True)
+            st.markdown(
+                """
+                <div style="background:#f7fbff;border-radius:14px;padding:18px 18px 10px 32px;margin:18px 0 0 0;">
+                """,
+                unsafe_allow_html=True
+            )
             sub_header = [
                 "サブタスク名", "担当者", "開始日", "期限日", "ステータス",
                 "実績工数（時間）", "見積工数（時間）", "進捗バー", "更新", "削除"
@@ -135,7 +148,7 @@ if not df.empty:
                 col.markdown(f"<span style='font-size:13px'>{h}</span>", unsafe_allow_html=True)
             for j, sub in enumerate(sub_tasks):
                 sub_cols = st.columns(sub_col_widths)
-                sub_cols[0].write(sub.get("name", ""))
+                sub_cols[0].markdown(f"<span style='margin-left:16px'>{sub.get('name', '')}</span>", unsafe_allow_html=True)
                 sub_cols[1].write(sub.get("assignee", ""))
                 sub_cols[2].write(sub.get("start", ""))
                 sub_cols[3].write(sub.get("due", ""))
@@ -204,6 +217,8 @@ if not df.empty:
                         elif cancel:
                             st.session_state[f"show_sub_update_form_{i}_{j}"] = False
                             st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)  # サブタスク表枠閉じ
+
 else:
     st.info("タスクがありません.")
 
