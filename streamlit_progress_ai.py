@@ -4,6 +4,8 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import os
 import plotly.express as px
+import json
+import math
 
 CSV_FILE = "tasks_ai.csv"
 
@@ -11,7 +13,7 @@ CSV_FILE = "tasks_ai.csv"
 if not os.path.exists(CSV_FILE):
     df_init = pd.DataFrame(columns=[
         "Task", "Assignee", "StartDate", "DueDate", "Status",
-        "ActualHours", "EstimatedHours", "NumFunctions", "NumTestCases"
+        "ActualHours", "EstimatedHours", "NumFunctions", "NumTestCases", "SubTasks"
     ])
     df_init.to_csv(CSV_FILE, index=False)
 
@@ -26,7 +28,7 @@ st.markdown(
 )
 
 # =========================
-# タスク一覧表示＆削除
+# タスク一覧表示＆削除＆サブタスク追加
 # =========================
 st.subheader("タスク一覧")
 if not df.empty:
@@ -34,7 +36,6 @@ if not df.empty:
         "タスク名", "担当者", "開始日", "期限日", "ステータス",
         "実績工数（時間）", "見積工数（時間）", "進捗バー", "更新", "削除"
     ]
-    # 幅を広めに設定（例: 3や4などに調整）
     col_widths = [4, 3, 3, 3, 3, 3, 3, 4, 2, 2]
     cols = st.columns(col_widths)
     for col, h in zip(cols, header):
@@ -74,6 +75,135 @@ if not df.empty:
             df.to_csv(CSV_FILE, index=False)
             st.success("タスクを削除しました！")
             st.rerun()
+
+        # --- サブタスク追加ボタン ---
+        st.markdown('<div style="margin:8px 0;"></div>', unsafe_allow_html=True)
+        subtask_btn = st.button("＋ サブタスク追加", key=f"subtask_add_btn_{i}")
+        if subtask_btn:
+            st.session_state[f"show_subtask_form_{i}"] = True
+
+        # --- サブタスク追加フォーム ---
+        if st.session_state.get(f"show_subtask_form_{i}", False):
+            with st.form(f"subtask_form_{i}"):
+                sub_name = st.text_input("サブタスク名", key=f"subtask_name_{i}")
+                sub_assignee = st.text_input("担当者", key=f"subtask_assignee_{i}")
+                sub_start = st.date_input("開始日", key=f"subtask_start_{i}")
+                sub_due = st.date_input("期限日", key=f"subtask_due_{i}")
+                sub_status = st.selectbox("ステータス", ["未着手", "進行中", "完了"], key=f"subtask_status_{i}")
+                sub_actual_hours = st.number_input("実績工数（時間）", min_value=0.0, step=0.5, key=f"subtask_actual_{i}")
+                sub_est_hours = st.number_input("見積工数（時間）", min_value=0.0, step=0.5, key=f"subtask_est_{i}")
+                submitted = st.form_submit_button("登録")
+                cancel = st.form_submit_button("キャンセル")
+                if submitted and sub_name:
+                    sub_tasks_raw = row.get("SubTasks", "[]")
+                    if isinstance(sub_tasks_raw, float) and math.isnan(sub_tasks_raw):
+                        sub_tasks_raw = "[]"
+                    sub_tasks = json.loads(sub_tasks_raw)
+                    sub_tasks.append({
+                        "name": sub_name,
+                        "assignee": sub_assignee,
+                        "start": str(sub_start),
+                        "due": str(sub_due),
+                        "status": sub_status,
+                        "actual_hours": sub_actual_hours,
+                        "est_hours": sub_est_hours,
+                        "done": sub_status == "完了"
+                    })
+                    df.at[i, "SubTasks"] = json.dumps(sub_tasks)
+                    df.to_csv(CSV_FILE, index=False)
+                    st.success("サブタスクを追加しました！")
+                    st.session_state[f"show_subtask_form_{i}"] = False
+                    st.rerun()
+                elif cancel:
+                    st.session_state[f"show_subtask_form_{i}"] = False
+                    st.rerun()
+
+        # --- サブタスク一覧を表形式で表示（更新・削除ボタン付き） ---
+        sub_tasks_raw = row.get("SubTasks", "[]")
+        if isinstance(sub_tasks_raw, float) and math.isnan(sub_tasks_raw):
+            sub_tasks_raw = "[]"
+        sub_tasks = json.loads(sub_tasks_raw)
+        if sub_tasks:
+            st.markdown('<div style="margin-left:24px; margin-bottom:4px; font-size:13px; color:#555;">サブタスク</div>', unsafe_allow_html=True)
+            sub_header = [
+                "サブタスク名", "担当者", "開始日", "期限日", "ステータス",
+                "実績工数（時間）", "見積工数（時間）", "進捗バー", "更新", "削除"
+            ]
+            sub_col_widths = [4, 3, 3, 3, 3, 3, 3, 4, 2, 2]
+            sub_cols = st.columns(sub_col_widths)
+            for col, h in zip(sub_cols, sub_header):
+                col.markdown(f"<span style='font-size:13px'>{h}</span>", unsafe_allow_html=True)
+            for j, sub in enumerate(sub_tasks):
+                sub_cols = st.columns(sub_col_widths)
+                sub_cols[0].write(sub.get("name", ""))
+                sub_cols[1].write(sub.get("assignee", ""))
+                sub_cols[2].write(sub.get("start", ""))
+                sub_cols[3].write(sub.get("due", ""))
+                sub_cols[4].write(sub.get("status", ""))
+                sub_cols[5].write(sub.get("actual_hours", ""))
+                sub_cols[6].write(sub.get("est_hours", ""))
+                # 進捗バー
+                est = sub.get("est_hours", 0)
+                actual = sub.get("actual_hours", 0)
+                try:
+                    est = float(est)
+                    actual = float(actual)
+                except:
+                    est = 0
+                    actual = 0
+                progress = actual / est if est > 0 else 0
+                progress = min(progress, 1.0)
+                bar_html = f"""
+                <div style="position: relative; height: 14px; background: #eee; border-radius: 7px;">
+                    <div style="position: absolute; left: 0; top: 0; height: 14px; width: {progress*100}%; background: #4caf50; border-radius: 7px;"></div>
+                    <div style="position: absolute; left: 6px; top: 0; height: 14px; line-height: 14px; color: #222; font-size: 11px;">
+                        {actual:.1f}/{est:.1f}h
+                    </div>
+                </div>
+                """
+                sub_cols[7].markdown(bar_html, unsafe_allow_html=True)
+                # 更新ボタン
+                update_clicked = sub_cols[8].button("✏️", key=f"sub_update_{i}_{j}")
+                if update_clicked:
+                    st.session_state[f"show_sub_update_form_{i}_{j}"] = True
+                # 削除ボタン
+                if sub_cols[9].button("🗑️", key=f"sub_del_btn_{i}_{j}"):
+                    sub_tasks.pop(j)
+                    df.at[i, "SubTasks"] = json.dumps(sub_tasks)
+                    df.to_csv(CSV_FILE, index=False)
+                    st.rerun()
+
+                # --- サブタスク更新フォーム ---
+                if st.session_state.get(f"show_sub_update_form_{i}_{j}", False):
+                    with st.form(f"sub_update_form_{i}_{j}"):
+                        sub_name = st.text_input("サブタスク名", value=sub.get("name", ""), key=f"sub_update_name_{i}_{j}")
+                        sub_assignee = st.text_input("担当者", value=sub.get("assignee", ""), key=f"sub_update_assignee_{i}_{j}")
+                        sub_start = st.date_input("開始日", value=pd.to_datetime(sub.get("start", "")), key=f"sub_update_start_{i}_{j}")
+                        sub_due = st.date_input("期限日", value=pd.to_datetime(sub.get("due", "")), key=f"sub_update_due_{i}_{j}")
+                        sub_status = st.selectbox("ステータス", ["未着手", "進行中", "完了"], index=["未着手", "進行中", "完了"].index(sub.get("status", "未着手")), key=f"sub_update_status_{i}_{j}")
+                        sub_actual_hours = st.number_input("実績工数（時間）", min_value=0.0, step=0.5, value=float(sub.get("actual_hours", 0)), key=f"sub_update_actual_{i}_{j}")
+                        sub_est_hours = st.number_input("見積工数（時間）", min_value=0.0, step=0.5, value=float(sub.get("est_hours", 0)), key=f"sub_update_est_{i}_{j}")
+                        submitted = st.form_submit_button("更新")
+                        cancel = st.form_submit_button("キャンセル")
+                        if submitted:
+                            sub_tasks[j] = {
+                                "name": sub_name,
+                                "assignee": sub_assignee,
+                                "start": str(sub_start),
+                                "due": str(sub_due),
+                                "status": sub_status,
+                                "actual_hours": sub_actual_hours,
+                                "est_hours": sub_est_hours,
+                                "done": sub_status == "完了"
+                            }
+                            df.at[i, "SubTasks"] = json.dumps(sub_tasks)
+                            df.to_csv(CSV_FILE, index=False)
+                            st.success("サブタスクを更新しました！")
+                            st.session_state[f"show_sub_update_form_{i}_{j}"] = False
+                            st.rerun()
+                        elif cancel:
+                            st.session_state[f"show_sub_update_form_{i}_{j}"] = False
+                            st.rerun()
 else:
     st.info("タスクがありません.")
 

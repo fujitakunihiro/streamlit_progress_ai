@@ -1,2 +1,3 @@
-Task,Assignee,StartDate,DueDate,Status,ActualHours,EstimatedHours,NumFunctions,NumTestCases
-タスク1,藤田,2025-09-25,2025-09-25,未着手,0,1.0,0,0
+Task,Assignee,StartDate,DueDate,Status,ActualHours,EstimatedHours,NumFunctions,NumTestCases,SubTasks
+親A,,2025-09-25,2025-09-25,未着手,0,0.0,0,0,"[{""name"": ""\u5b50A"", ""assignee"": """", ""start"": ""2025-09-25"", ""due"": ""2025-09-25"", ""status"": ""\u672a\u7740\u624b"", ""actual_hours"": 0.0, ""est_hours"": 0.0, ""done"": false}, {""name"": ""\u5b50B"", ""assignee"": """", ""start"": ""2025-09-25"", ""due"": ""2025-09-25"", ""status"": ""\u672a\u7740\u624b"", ""actual_hours"": 0.0, ""est_hours"": 0.0, ""done"": false}]"
+親B,,2025-09-25,2025-09-25,未着手,0,0.0,0,0,
