@@ -20,6 +20,11 @@ df = pd.read_csv(CSV_FILE)
 
 st.title("高度版 進捗管理＋AI工数予測")
 
+st.markdown(
+    '<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">',
+    unsafe_allow_html=True
+)
+
 # =========================
 # タスク一覧表示＆削除
 # =========================
@@ -58,8 +63,9 @@ if not df.empty:
         </div>
         """
         cols[7].markdown(bar_html, unsafe_allow_html=True)
-        update_clicked = cols[8].button("更新", key=f"update_{i}")
-        del_clicked = cols[9].button("削除", key=f"del_{i}")
+        # アイコン風ボタン（絵文字利用）
+        update_clicked = cols[8].button("✏️", key=f"update_{i}")
+        del_clicked = cols[9].button("🗑️", key=f"del_{i}")
         if update_clicked:
             st.session_state["update_task_idx"] = i
             st.session_state["show_update_form"] = True
@@ -76,7 +82,7 @@ if st.button("タスク追加", key="add_task_main"):
     st.session_state["show_add_form"] = True
 
 # =========================
-# タスク追加フォーム（ダイアログ風）
+# タスク追加フォーム（フォーム表示）
 # =========================
 if st.session_state.get("show_add_form", False):
     st.subheader("タスク追加")
@@ -88,7 +94,7 @@ if st.session_state.get("show_add_form", False):
         est_hours = st.number_input("見積工数（時間）", min_value=0.0, step=0.5)
         num_func = st.number_input("関数数", min_value=0, step=1)
         num_test = st.number_input("テストケース数", min_value=0, step=1)
-        submitted = st.form_submit_button("タスク追加")
+        submitted = st.form_submit_button("追加")
         cancel = st.form_submit_button("キャンセル")
         if submitted:
             df = pd.concat([df, pd.DataFrame([{
@@ -111,20 +117,34 @@ if st.session_state.get("show_add_form", False):
             st.rerun()
 
 # =========================
-# タスク更新フォーム（ダイアログ風）
+# タスク更新フォーム（ダイアログ風・全項目編集）
 # =========================
 if st.session_state.get("show_update_form", False):
     idx = st.session_state.get("update_task_idx")
     if idx is not None and idx < len(df):
         st.subheader("タスク更新")
         with st.form("update_task_form_dialog"):
-            status = st.selectbox("ステータス", ["未着手", "進行中", "完了"], index=0)
-            actual_hours = st.number_input("実績工数（時間）", min_value=0.0, step=0.5)
+            task = st.text_input("タスク名", value=df.at[idx, "Task"])
+            assignee = st.text_input("担当者", value=df.at[idx, "Assignee"])
+            start = st.date_input("開始日", value=pd.to_datetime(df.at[idx, "StartDate"]))
+            due = st.date_input("期限日", value=pd.to_datetime(df.at[idx, "DueDate"]))
+            status = st.selectbox("ステータス", ["未着手", "進行中", "完了"], index=["未着手", "進行中", "完了"].index(df.at[idx, "Status"]))
+            actual_hours = st.number_input("実績工数（時間）", min_value=0.0, step=0.5, value=float(df.at[idx, "ActualHours"]))
+            est_hours = st.number_input("見積工数（時間）", min_value=0.0, step=0.5, value=float(df.at[idx, "EstimatedHours"]))
+            num_func = st.number_input("関数数", min_value=0, step=1, value=int(df.at[idx, "NumFunctions"]))
+            num_test = st.number_input("テストケース数", min_value=0, step=1, value=int(df.at[idx, "NumTestCases"]))
             submitted = st.form_submit_button("更新")
             cancel = st.form_submit_button("キャンセル")
             if submitted:
+                df.at[idx, "Task"] = task
+                df.at[idx, "Assignee"] = assignee
+                df.at[idx, "StartDate"] = start
+                df.at[idx, "DueDate"] = due
                 df.at[idx, "Status"] = status
                 df.at[idx, "ActualHours"] = actual_hours
+                df.at[idx, "EstimatedHours"] = est_hours
+                df.at[idx, "NumFunctions"] = num_func
+                df.at[idx, "NumTestCases"] = num_test
                 df.to_csv(CSV_FILE, index=False)
                 st.success("タスクを更新しました！")
                 st.session_state["show_update_form"] = False

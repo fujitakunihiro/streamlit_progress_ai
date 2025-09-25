@@ -1,4 +1,2 @@
 Task,Assignee,StartDate,DueDate,Status,ActualHours,EstimatedHours,NumFunctions,NumTestCases
-大崎のHDMI不具合修正,藤田,2025-09-25,2025-09-26,完了,1.0,6.0,0,0
-17FのTVのHDMI不具合,藤田,2025-09-25,2025-09-25,完了,1.5,1.5,0,0
-ああHDMI,藤田,2025-09-25,2025-09-25,完了,0.0,1.5,0,0
+タスク1,藤田,2025-09-25,2025-09-25,未着手,0,1.0,0,0
